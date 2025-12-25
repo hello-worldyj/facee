@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>얼평 앱</title>
+<style>
+  body {
+    font-family: "Noto Sans KR", sans-serif;
+    max-width: 400px;
+    margin: 1rem auto;
+  }
+  h1 {
+    font-weight: 700;
+    font-size: 2rem;
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+  .preview img {
+    width: 100%;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+  }
+  .result {
+    padding: 1rem;
+    border-radius: 12px;
+    background: #f0f0f0;
+    margin-top: 1rem;
+  }
+  button {
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<h1>얼평 앱</h1>
+
+<form id="form">
+  <input type="file" name="photo" id="fileInput" accept="image/*" required />
+  <button type="submit">평가 요청</button>
+</form>
+
+<div class="preview" id="preview"></div>
+<div class="result" id="result" style="display:none;"></div>
+
+<script>
+  const form = document.getElementById("form");
+  const fileInput = document.getElementById("fileInput");
+  const preview = document.getElementById("preview");
+  const result = document.getElementById("result");
+
+  let currentId = null;
+  let checkInterval = null;
+
+  // 파일 선택하면 미리보기 보여줌
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files.length === 0) {
+      preview.innerHTML = "";
+      result.style.display = "none";
+      result.textContent = "";
+      return;
+    }
+    const url = URL.createObjectURL(fileInput.files[0]);
+    preview.innerHTML = `<img src="${url}" alt="선택한 사진" />`;
+    result.style.display = "none";
+    result.textContent = "";
+  });
+
+  // 폼 제출
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    if (!fileInput.files.length) {
+      alert("사진은여?");
+      return;
+    }
+
+    result.style.display = "block";
+    result.textContent = "ㄱㄷ...";
+
+    const formData = new FormData(form);
+
+    try {
+      const res = await fetch("/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error("서버 오류");
+
+      const data = await res.json();
+      currentId = data.id;
+
+      result.textContent = "평가중...";
+
+      // 결과 주기적 확인 시작
+      if (checkInterval) clearInterval(checkInterval);
+      checkInterval = setInterval(async () => {
+        const res2 = await fetch(`/result/${currentId}`);
+        if (!res2.ok) return;
+        const resultData = await res2.json();
+
+        if (resultData.status === "done") {
+          clearInterval(checkInterval);
+          result.innerHTML = `
+            <div><b>평가 결과:</b> ${resultData.result}</div>
+            <img src="${resultData.imageUrl}" alt="평가 사진" style="margin-top: 12px; border-radius: 12px; width: 100%;" />
+          `;
+        }
+      }, 5000);
+    } catch (err) {
+      result.textContent = `오류 발생: ${err.message}`;
+    }
+  });
+</script>
+</body>
+</html>
