@@ -149,3 +149,26 @@ app.get("/result/:id", (req, res) => {
 app.listen(PORT, () => {
   console.log("Server running on", PORT);
 });
+app.get("/test-discord", async (req, res) => {
+  try {
+    const r = await fetch(
+      `https://discord.com/api/v10/channels/${DISCORD_CHANNEL_ID}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: "✅ 테스트 메시지 (서버에서 직접 보냄)",
+        }),
+      }
+    );
+
+    const text = await r.text();
+    res.send({ status: r.status, text });
+  } catch (e) {
+    res.status(500).send(e.message);
+  }
+});
+
