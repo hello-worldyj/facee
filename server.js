@@ -55,7 +55,7 @@ app.post("/upload", upload.single("photo"), async (req, res) => {
   await client.channels.cache
     .get(process.env.DISCORD_CHANNEL_ID)
     .send({
-      content: `📸 얼굴 평가\nID: ${id}\n!rate ${id} <결과> 도 가능`,
+      content: ` @everyone 얼굴 평가\nID: ${id}\n!rate ${id} <결과> 도 가능`,
       files: [ path.join(uploadDir, path.basename(req.file.path)) ],
       components: [row]
     });
