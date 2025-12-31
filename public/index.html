@@ -3,13 +3,11 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-
 <title>얼평</title>
-
 <style>
-body { font-family: sans-serif; max-width: 400px; margin: auto; }
-img { width: 100%; border-radius: 12px; }
-button { margin-top: 10px; width: 100%; padding: 10px; }
+body { max-width: 400px; margin:auto; font-family:sans-serif }
+img { width:100%; border-radius:12px }
+button { width:100%; padding:10px; margin-top:10px }
 </style>
 </head>
 
@@ -18,7 +16,7 @@ button { margin-top: 10px; width: 100%; padding: 10px; }
 
 <form id="form">
   <input type="file" name="photo" accept="image/*" required />
-  <button>평가 </button>
+  <button>평가</button>
 </form>
 
 <div id="preview"></div>
@@ -29,39 +27,33 @@ const form = document.getElementById("form");
 const preview = document.getElementById("preview");
 const result = document.getElementById("result");
 
-let currentId = null;
+let currentId;
 
 form.photo.onchange = () => {
-  const file = form.photo.files[0];
-  if (!file) return;
-  preview.innerHTML = `<img src="${URL.createObjectURL(file)}">`;
+  const f = form.photo.files[0];
+  if (!f) return;
+  preview.innerHTML = `<img src="${URL.createObjectURL(f)}">`;
 };
 
 form.onsubmit = async e => {
   e.preventDefault();
+  result.textContent = "ㄱㄷ...";
 
   const fd = new FormData(form);
-  result.textContent = "ㄱㄷ";
-
-  const r = await fetch("/upload", { method: "POST", body: fd });
+  const r = await fetch("/upload", { method:"POST", body:fd });
   const d = await r.json();
   currentId = d.id;
 
-  result.textContent = "평가중";
+  result.textContent = "평가 중...";
 
-  const t = setInterval(async () => {
+  const timer = setInterval(async () => {
     const r2 = await fetch(`/result/${currentId}`);
-    if (!r2.ok) return;
     const d2 = await r2.json();
-
     if (d2.status === "done") {
-      clearInterval(t);
-      result.innerHTML = `
-        <h3>결과: ${d2.result}</h3>
-        <img src="${d2.imageUrl}">
-      `;
+      clearInterval(timer);
+      result.innerHTML = `<h3>결과: ${d2.result}</h3><img src="${d2.imageUrl}">`;
     }
-  }, 3000);
+  }, 2000);
 };
 </script>
 </body>
