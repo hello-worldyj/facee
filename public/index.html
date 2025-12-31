@@ -1,194 +1,49 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>얼평 앱</title>
-
-<style>
-  :root {
-    --glass-bg: rgba(255, 255, 255, 0.42);
-    --glass-border: rgba(255, 255, 255, 0.55);
-    --text-main: #111;
-    --text-sub: #555;
-  }
-
-  * {
-    box-sizing: border-box;
-  }
-
-  body {
-    margin: 0;
-    padding: 2rem 1rem;
-    font-family: "Noto Sans KR", -apple-system, BlinkMacSystemFont, sans-serif;
-    background:
-      radial-gradient(circle at top, #f5f7ff, #fdf2f8 40%, #eef2ff);
-    min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-
-  .app {
-    width: 100%;
-    max-width: 420px;
-    padding: 1.8rem 1.6rem 2rem;
-    border-radius: 26px;
-    background: linear-gradient(
-      180deg,
-      rgba(255,255,255,0.65),
-      rgba(255,255,255,0.35)
-    );
-    backdrop-filter: blur(22px) saturate(130%);
-    -webkit-backdrop-filter: blur(22px) saturate(130%);
-    border: 1px solid var(--glass-border);
-    box-shadow:
-      0 30px 60px rgba(0,0,0,0.12),
-      inset 0 1px 0 rgba(255,255,255,0.8);
-  }
-
-  h1 {
-    margin: 0 0 1.4rem;
-    text-align: center;
-    font-size: 2.1rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    color: var(--text-main);
-  }
-
-  input[type="file"] {
-    display: none;
-  }
-
-  .glass-btn {
-    width: 100%;
-    padding: 15px;
-    margin-top: 12px;
-    border-radius: 18px;
-    border: 1px solid rgba(255,255,255,0.6);
-    background:
-      linear-gradient(
-        180deg,
-        rgba(255,255,255,0.6),
-        rgba(255,255,255,0.25)
-      );
-    backdrop-filter: blur(12px);
-    color: var(--text-main);
-    font-size: 1.05rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition:
-      transform 0.25s ease,
-      box-shadow 0.25s ease,
-      background 0.25s ease;
-  }
-
-  .glass-btn:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 28px rgba(0,0,0,0.15);
-  }
-
-  .glass-btn:active {
-    transform: translateY(0) scale(0.97);
-    box-shadow: 0 6px 14px rgba(0,0,0,0.12);
-  }
-
-  .preview img {
-    width: 100%;
-    margin-top: 1.4rem;
-    border-radius: 22px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.18);
-  }
-
-  .result {
-    margin-top: 1.6rem;
-    padding: 1.1rem;
-    border-radius: 22px;
-    background: rgba(255,255,255,0.45);
-    text-align: center;
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: var(--text-main);
-  }
-
-  .loading {
-    font-size: 0.95rem;
-    font-weight: 500;
-    color: var(--text-sub);
-    animation: breathe 1.4s ease-in-out infinite;
-  }
-
-  @keyframes breathe {
-    0% { opacity: 0.45; }
-    50% { opacity: 1; }
-    100% { opacity: 0.45; }
-  }
-</style>
+  <meta charset="UTF-8" />
+  <title>얼평</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 40px;
+    }
+    img {
+      max-width: 300px;
+      margin-top: 20px;
+    }
+  </style>
 </head>
-
 <body>
-<div class="app">
-  <h1>얼평 앱</h1>
 
-  <form id="form">
-    <label for="fileInput" class="glass-btn">사진</label>
-    <input type="file" id="fileInput" name="photo" accept="image/*" required />
-    <button type="submit" class="glass-btn">평가</button>
-  </form>
+<h1>얼업로드</h1>
 
-  <div class="preview" id="preview"></div>
-  <div class="result" id="result" style="display:none;"></div>
-</div>
+<input type="file" id="file" accept="image/*" />
+<br /><br />
+<button onclick="upload()">업로드</button>
 
 <script>
-  const form = document.getElementById("form");
-  const fileInput = document.getElementById("fileInput");
-  const preview = document.getElementById("preview");
-  const result = document.getElementById("result");
+async function upload() {
+  const file = document.getElementById("file").files[0];
+  if (!file) return alert("사진은여??");
 
-  let currentId = null;
-  let checkInterval = null;
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const base64 = reader.result.split(",")[1];
 
-  fileInput.addEventListener("change", () => {
-    if (!fileInput.files.length) return;
-    const url = URL.createObjectURL(fileInput.files[0]);
-    preview.innerHTML = `<img src="${url}" alt="preview">`;
-    result.style.display = "none";
-  });
+    const res = await fetch("/upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageBase64: base64 })
+    });
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    if (!fileInput.files.length) {
-      alert("사진은여?.");
-      return;
-    }
-
-    result.style.display = "block";
-    result.innerHTML = `<div class="loading">ㄱㄷ.</div>`;
-
-    const formData = new FormData(form);
-    const res = await fetch("/upload", { method: "POST", body: formData });
-    const data = await res.json();
-    currentId = data.id;
-
-    result.innerHTML = `<div class="loading">평가 중</div>`;
-
-    if (checkInterval) clearInterval(checkInterval);
-    checkInterval = setInterval(async () => {
-      const r = await fetch(`/result/${currentId}`);
-      const d = await r.json();
-
-      if (d.status === "done") {
-        clearInterval(checkInterval);
-        result.innerHTML = `
-          <div>결과</div>
-          <div style="margin-top:10px;font-size:1.5rem;">
-            ${d.result}
-          </div>
-        `;
-      }
-    }, 4000);
-  });
+    if (res.ok) alert("다시 시도");
+    else alert("실팽");
+  };
+  reader.readAsDataURL(file);
+}
 </script>
+
 </body>
 </html>
