@@ -4,10 +4,113 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>얼평</title>
+
 <style>
-body { max-width: 400px; margin:auto; font-family:sans-serif }
-img { width:100%; border-radius:12px }
-button { width:100%; padding:10px; margin-top:10px }
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 24px 16px 40px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  background: linear-gradient(180deg, #fafafa, #f1f1f1);
+  color: #111;
+  max-width: 420px;
+  margin-inline: auto;
+}
+
+h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+form {
+  background: #fff;
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+}
+
+input[type="file"] {
+  width: 100%;
+  padding: 12px;
+  border: 1px dashed #ccc;
+  border-radius: 12px;
+  background: #fafafa;
+  font-size: 14px;
+}
+
+button {
+  margin-top: 14px;
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 14px;
+  background: #111;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.05s ease, opacity 0.2s ease;
+}
+
+button:active {
+  transform: scale(0.97);
+  opacity: 0.85;
+}
+
+#preview {
+  margin-top: 20px;
+}
+
+#preview img {
+  width: 100%;
+  border-radius: 18px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+}
+
+#result {
+  margin-top: 22px;
+  padding: 16px;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+  text-align: center;
+  font-size: 15px;
+}
+
+#result h3 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+#result img {
+  margin-top: 12px;
+  width: 100%;
+  border-radius: 16px;
+}
+
+/* 결과 없을 땐 숨김 */
+#result:empty {
+  display: none;
+}
+
+/* 작은 화면 */
+@media (max-width: 360px) {
+  body {
+    padding: 16px 12px 32px;
+  }
+
+  button {
+    font-size: 15px;
+    padding: 12px;
+  }
+}
 </style>
 </head>
 
@@ -27,31 +130,37 @@ const form = document.getElementById("form");
 const preview = document.getElementById("preview");
 const result = document.getElementById("result");
 
-let currentId;
+let currentId = null;
 
 form.photo.onchange = () => {
-  const f = form.photo.files[0];
-  if (!f) return;
-  preview.innerHTML = `<img src="${URL.createObjectURL(f)}">`;
+  const file = form.photo.files[0];
+  if (!file) return;
+  preview.innerHTML = `<img src="${URL.createObjectURL(file)}">`;
 };
 
 form.onsubmit = async e => {
   e.preventDefault();
-  result.textContent = "ㄱㄷ...";
 
   const fd = new FormData(form);
-  const r = await fetch("/upload", { method:"POST", body:fd });
+  result.textContent = "업로드 중...";
+
+  const r = await fetch("/upload", { method: "POST", body: fd });
   const d = await r.json();
   currentId = d.id;
 
   result.textContent = "평가 중...";
 
-  const timer = setInterval(async () => {
+  const t = setInterval(async () => {
     const r2 = await fetch(`/result/${currentId}`);
+    if (!r2.ok) return;
     const d2 = await r2.json();
+
     if (d2.status === "done") {
-      clearInterval(timer);
-      result.innerHTML = `<h3>결과: ${d2.result}</h3><img src="${d2.imageUrl}">`;
+      clearInterval(t);
+      result.innerHTML = `
+        <h3>결과: ${d2.result}</h3>
+        <img src="${d2.imageUrl}">
+      `;
     }
   }, 2000);
 };
