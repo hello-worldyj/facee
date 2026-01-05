@@ -6,110 +6,28 @@
 <title>얼평</title>
 
 <style>
-* {
-  box-sizing: border-box;
-}
-
 body {
-  margin: 0;
-  padding: 24px 16px 40px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-  background: linear-gradient(180deg, #fafafa, #f1f1f1);
-  color: #111;
+  font-family: sans-serif;
   max-width: 420px;
-  margin-inline: auto;
+  margin: auto;
+  padding: 20px;
 }
-
 h2 {
   text-align: center;
-  margin-bottom: 20px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
 }
-
-form {
-  background: #fff;
-  border-radius: 18px;
-  padding: 18px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
-}
-
-input[type="file"] {
+img {
   width: 100%;
-  padding: 12px;
-  border: 1px dashed #ccc;
   border-radius: 12px;
-  background: #fafafa;
-  font-size: 14px;
+  margin-top: 10px;
 }
-
 button {
-  margin-top: 14px;
-  width: 100%;
-  padding: 14px;
-  border: none;
-  border-radius: 14px;
-  background: #111;
-  color: #fff;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.05s ease, opacity 0.2s ease;
-}
-
-button:active {
-  transform: scale(0.97);
-  opacity: 0.85;
-}
-
-#preview {
-  margin-top: 20px;
-}
-
-#preview img {
-  width: 100%;
-  border-radius: 18px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
-}
-
-#result {
-  margin-top: 22px;
-  padding: 16px;
-  background: #fff;
-  border-radius: 18px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
-  text-align: center;
-  font-size: 15px;
-}
-
-#result h3 {
-  margin: 0 0 12px;
-  font-size: 18px;
-  font-weight: 700;
-}
-
-#result img {
   margin-top: 12px;
   width: 100%;
-  border-radius: 16px;
+  padding: 12px;
+  font-size: 16px;
 }
-
-/* 결과 없을 땐 숨김 */
-#result:empty {
-  display: none;
-}
-
-/* 작은 화면 */
-@media (max-width: 360px) {
-  body {
-    padding: 16px 12px 32px;
-  }
-
-  button {
-    font-size: 15px;
-    padding: 12px;
-  }
+button:disabled {
+  background: #ccc;
 }
 </style>
 </head>
@@ -119,7 +37,7 @@ button:active {
 
 <form id="form">
   <input type="file" name="photo" accept="image/*" required />
-  <button>평가</button>
+  <button id="submitBtn">평가</button>
 </form>
 
 <div id="preview"></div>
@@ -129,40 +47,58 @@ button:active {
 const form = document.getElementById("form");
 const preview = document.getElementById("preview");
 const result = document.getElementById("result");
+const submitBtn = document.getElementById("submitBtn");
 
 let currentId = null;
+let locked = false; // ⭐ 이 페이지에서 한 번 눌렀는지
 
 form.photo.onchange = () => {
   const file = form.photo.files[0];
   if (!file) return;
+
   preview.innerHTML = `<img src="${URL.createObjectURL(file)}">`;
+  result.textContent = "";
+
+  // 사진 바뀌면 다시 평가 가능
+  locked = false;
+  submitBtn.disabled = false;
 };
 
 form.onsubmit = async e => {
   e.preventDefault();
 
-  const fd = new FormData(form);
-  result.textContent = "업로드 중...";
+  // 이 페이지에서 이미 평가함
+  if (locked) return;
 
-  const r = await fetch("/upload", { method: "POST", body: fd });
+  locked = true;
+  submitBtn.disabled = true;
+
+  const fd = new FormData(form);
+  result.textContent = "업로드 중";
+
+  const r = await fetch("/upload", {
+    method: "POST",
+    body: fd
+  });
+
   const d = await r.json();
   currentId = d.id;
 
-  result.textContent = "평가 중...";
+  result.textContent = "평가 대기 중";
 
-  const t = setInterval(async () => {
+  const timer = setInterval(async () => {
     const r2 = await fetch(`/result/${currentId}`);
     if (!r2.ok) return;
-    const d2 = await r2.json();
 
+    const d2 = await r2.json();
     if (d2.status === "done") {
-      clearInterval(t);
+      clearInterval(timer);
       result.innerHTML = `
         <h3>결과: ${d2.result}</h3>
         <img src="${d2.imageUrl}">
       `;
     }
-  }, 2000);
+  }, 3000);
 };
 </script>
 </body>
