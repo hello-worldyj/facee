@@ -16,8 +16,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-/* ================= Discord ================= */
-
+/* Discord */
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -30,12 +29,10 @@ client.once("ready", () => {
   console.log("Discord bot logged in");
 });
 
-/* ================= Memory Store ================= */
-
+/* 메모리 저장 */
 const requests = {};
 
-/* ================= Upload ================= */
-
+/* 업로드 설정 */
 const uploadDir = path.join(process.cwd(), "public/uploads");
 fs.mkdirSync(uploadDir, { recursive: true });
 
@@ -47,17 +44,14 @@ const upload = multer({
   })
 });
 
-/* ================= Middleware ================= */
-
 app.use(express.static("public"));
 app.use("/uploads", express.static(uploadDir));
 
-/* ================= Upload API ================= */
-
+/* 업로드 */
 app.post("/upload", upload.single("photo"), async (req, res) => {
   const id = Date.now().toString();
   const filename = path.basename(req.file.path);
-  const imageUrl = `/uploads/${filename}`;
+  const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${filename}`;
 
   requests[id] = {
     status: "pending",
@@ -66,28 +60,13 @@ app.post("/upload", upload.single("photo"), async (req, res) => {
   };
 
   const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setLabel("잘생김")
-      .setStyle(ButtonStyle.Primary)
-      .setCustomId(`rate:${id}:잘생김`),
-    new ButtonBuilder()
-      .setLabel("예쁨")
-      .setStyle(ButtonStyle.Primary)
-      .setCustomId(`rate:${id}:예쁨`),
-    new ButtonBuilder()
-      .setLabel("귀여움")
-      .setStyle(ButtonStyle.Primary)
-      .setCustomId(`rate:${id}:귀여움`),
-    new ButtonBuilder()
-      .setLabel("못생김")
-      .setStyle(ButtonStyle.Danger)
-      .setCustomId(`rate:${id}:못생김`)
+    new ButtonBuilder().setLabel("잘생김").setStyle(ButtonStyle.Primary).setCustomId(`rate:${id}:잘생김`),
+    new ButtonBuilder().setLabel("예쁨").setStyle(ButtonStyle.Primary).setCustomId(`rate:${id}:예쁨`),
+    new ButtonBuilder().setLabel("귀여움").setStyle(ButtonStyle.Primary).setCustomId(`rate:${id}:귀여움`),
+    new ButtonBuilder().setLabel("못생김").setStyle(ButtonStyle.Danger).setCustomId(`rate:${id}:못생김`)
   );
 
-  const channel = await client.channels.fetch(
-    process.env.DISCORD_CHANNEL_ID
-  );
-
+  const channel = await client.channels.fetch(process.env.DISCORD_CHANNEL_ID);
   await channel.send({
     content: "@everyone 얼굴 평가 요청\nID: " + id + "\n!rate " + id + " <결과>",
     files: [path.join(uploadDir, filename)],
@@ -97,28 +76,20 @@ app.post("/upload", upload.single("photo"), async (req, res) => {
   res.json({ id });
 });
 
-/* ================= Result API ================= */
-
+/* 결과 */
 app.get("/result/:id", (req, res) => {
   const data = requests[req.params.id];
   if (!data) return res.status(404).json({ error: "없음" });
   res.json(data);
 });
 
-/* ================= Button Interaction ================= */
-
+/* 버튼 */
 client.on("interactionCreate", async interaction => {
   if (!interaction.isButton()) return;
 
   const [, id, result] = interaction.customId.split(":");
   const data = requests[id];
-
-  if (!data) {
-    return interaction.reply({
-      content: "존재하지 않는 평가",
-      ephemeral: true
-    });
-  }
+  if (!data) return;
 
   if (data.status === "done") {
     return interaction.reply({
@@ -131,8 +102,8 @@ client.on("interactionCreate", async interaction => {
   data.result = result;
 
   const disabledRow = new ActionRowBuilder().addComponents(
-    interaction.message.components[0].components.map(btn =>
-      ButtonBuilder.from(btn).setDisabled(true)
+    interaction.message.components[0].components.map(b =>
+      ButtonBuilder.from(b).setDisabled(true)
     )
   );
 
@@ -142,8 +113,7 @@ client.on("interactionCreate", async interaction => {
   });
 });
 
-/* ================= !rate Command ================= */
-
+/* !rate */
 client.on("messageCreate", msg => {
   if (msg.author.bot) return;
   if (!msg.content.startsWith("!rate")) return;
@@ -157,17 +127,16 @@ client.on("messageCreate", msg => {
   if (!data) return msg.reply("ID 없음");
 
   if (data.status === "done") {
-    return msg.reply("이미 평가된 사진임");
+    return msg.reply("이미 평가된 사진");
   }
 
   data.status = "done";
   data.result = result;
 
-  msg.reply("평완: " + result);
+  msg.reply("평가 완료: " + result);
 });
 
-/* ================= Start ================= */
-
+/* 시작 */
 app.listen(PORT, () => {
   console.log("Server running on " + PORT);
 });
