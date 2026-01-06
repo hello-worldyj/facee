@@ -68,7 +68,7 @@ app.post("/upload", upload.single("photo"), async (req, res) => {
 
   const channel = await client.channels.fetch(process.env.DISCORD_CHANNEL_ID);
   await channel.send({
-    content: "@everyone 얼굴 평가 요청\nID: " + id,
+    content: " @everyone 얼굴 평가 요청\nID: " + id,
     files: [path.join(uploadDir, filename)],
     components: [row]
   });
